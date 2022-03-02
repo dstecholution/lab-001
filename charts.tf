@@ -24,7 +24,7 @@ resource "helm_release" "gatekeeper" {
   name       = "gatekeeper"
   chart      = "gatekeeper/gatekeeper"
   namespace  = "gatekeeper-system"
-  create_namespace = true
+  #create_namespace = true
 }
 
 resource "helm_release" "sysdig" {
@@ -35,7 +35,7 @@ resource "helm_release" "sysdig" {
   chart      = "sysdig"
 
   namespace  = "sysdig-agent"
-  create_namespace = true
+  #create_namespace = true
 
   set {
     name = "sysdig.accessKey"
@@ -67,7 +67,7 @@ resource "helm_release" "gremlind" {
   name       = "gremlin"
   chart      = "gremlin/gremlin"
   namespace  = "gremlin"
-  create_namespace = true
+  #create_namespace = true
 
   set {
     name = "gremlin.secret.managed"
@@ -90,8 +90,8 @@ resource "helm_release" "gremlind" {
   }
 
   set {
-    name = "gremlin.secret.teamSecet"
-    value = var.gremlin_teamSecet
+    name = "gremlin.secret.teamSecret"
+    value = var.gremlin_teamSecret
   }
 
 }
