@@ -1,0 +1,127 @@
+version: 2.1
+
+defaults: &defaults
+  machine:
+    image: ubuntu-2004:202104-01
+
+env: &env
+  environment:
+    GRUNTWORK_INSTALLER_VERSION: v0.0.30
+    TERRATEST_LOG_PARSER_VERSION: v0.30.4
+    MODULE_CI_VERSION: v0.37.5
+    TERRAFORM_VERSION: 1.0.4
+    TERRAGRUNT_VERSION: NONE
+    PACKER_VERSION: NONE
+    GOLANG_VERSION: 1.16
+    GO111MODULE: auto
+    HELM_VERSION: v3.1.2
+    K8S_VERSION: v1.10.0
+    KUBECONFIG: /home/circleci/.kube/config
+
+jobs:
+  precommit:
+    <<: *env
+    docker:
+      - image: circleci/python:3.8.1
+    steps:
+      - checkout
+
+      - run:
+          name: install dependencies
+          command: |
+            curl -Ls https://raw.githubusercontent.com/gruntwork-io/gruntwork-installer/master/bootstrap-gruntwork-installer.sh | bash /dev/stdin --version "${GRUNTWORK_INSTALLER_VERSION}"
+            gruntwork-install --module-name "gruntwork-module-circleci-helpers" --repo "https://github.com/gruntwork-io/terraform-aws-ci" --tag "${MODULE_CI_VERSION}"
+            configure-environment-for-gruntwork-module \
+              --terraform-version ${TERRAFORM_VERSION} \
+              --terragrunt-version NONE \
+              --packer-version NONE \
+              --go-version ${GOLANG_VERSION}
+      # Fail the build if the pre-commit hooks don't pass. Note: if you run pre-commit install locally, these hooks will
+      # execute automatically every time before you commit, ensuring the build never fails at this step!
+      - run:
+          command: |
+            pip install pre-commit==1.21.0 cfgv==2.0.1 zipp==1.1.0 yapf
+            go get golang.org/x/tools/cmd/goimports
+            export GOPATH=~/go/bin && export PATH=$PATH:$GOPATH
+            pre-commit install
+            pre-commit run --all-files
+
+  test:
+    <<: *defaults
+    <<: *env
+    steps:
+      - checkout
+      - run: &install_gruntwork_tooling
+          name: install gruntwork tooling
+          command: |
+            sudo apt-get -y update
+            curl -Ls https://raw.githubusercontent.com/gruntwork-io/gruntwork-installer/master/bootstrap-gruntwork-installer.sh | bash /dev/stdin --version "${GRUNTWORK_INSTALLER_VERSION}"
+            gruntwork-install --module-name "gruntwork-module-circleci-helpers" --repo "https://github.com/gruntwork-io/terraform-aws-ci" --tag "${MODULE_CI_VERSION}"
+            gruntwork-install --module-name "git-helpers" --repo "https://github.com/gruntwork-io/terraform-aws-ci" --tag "${MODULE_CI_VERSION}"
+            gruntwork-install --binary-name "terratest_log_parser" --repo "https://github.com/gruntwork-io/terratest" --tag "${TERRATEST_LOG_PARSER_VERSION}"
+            configure-environment-for-gruntwork-module --go-src-path ./test --terraform-version ${TERRAFORM_VERSION} --terragrunt-version ${TERRAGRUNT_VERSION} --packer-version ${PACKER_VERSION} --go-version ${GOLANG_VERSION}
+
+      - run:
+          name: install helm client
+          command: |
+            # install helm client
+            curl -Lo helm.tar.gz https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz
+            tar -xvf helm.tar.gz
+            chmod +x linux-amd64/helm
+            sudo mv linux-amd64/helm /usr/local/bin/
+
+      # Install external dependencies
+      - run:
+          name: install gcloud dependencies
+          command: |
+            gcloud --quiet components update beta kubectl
+
+      - run:
+          name: configure kubectl
+          command: |
+            mkdir -p ${HOME}/.kube
+            touch ${HOME}/.kube/config
+
+      - run:
+          name: run tests
+          command: |
+            # required for gcloud and kubectl to authenticate correctly
+            echo $GCLOUD_SERVICE_KEY | gcloud auth activate-service-account --key-file=-
+            gcloud --quiet config set project ${GOOGLE_PROJECT_ID}
+            gcloud --quiet config set compute/zone ${GOOGLE_COMPUTE_ZONE}
+            # required for terraform and terratest to authenticate correctly
+            echo $GCLOUD_SERVICE_KEY > /tmp/gcloud.json
+            export GOOGLE_APPLICATION_CREDENTIALS="/tmp/gcloud.json"
+            # run the tests
+            mkdir -p /tmp/logs
+            run-go-tests --path test --timeout 2h | tee /tmp/logs/all.log
+          no_output_timeout: 1h
+
+      - run:
+          name: parse test output
+          command: terratest_log_parser --testlog /tmp/logs/all.log --outputdir /tmp/logs
+          when: always
+
+      - store_artifacts:
+          path: /tmp/logs
+      - store_test_results:
+          path: /tmp/logs
+
+workflows:
+  version: 2
+  test:
+    jobs:
+      - precommit:
+          context:
+            - Gruntwork GCP
+          filters:
+            tags:
+              only: /^v.*/
+      - test:
+          context:
+            - Gruntwork GCP
+          requires:
+            - precommit
+          filters:
+            tags:
+              only: /^v.*/
