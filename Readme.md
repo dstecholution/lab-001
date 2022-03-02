@@ -5,11 +5,13 @@ Create a base lab environment in GCP for running Gremlin, Sysdig, OPA Gatekeeper
 for testing and learning Chaos Engineering.
 
 ## Slidedeck
- * [![Google
+
+[![Google
    Slides](docs/slidedeck-intro.png)](https://docs.google.com/presentation/d/13GOohknflbFLbFMHme0h2eydzyQuAqdFpohduUPaDnE/edit?usp=sharing)
 
 ## Launch in Google Cloud Shell
- * [Open in cloud shell](https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2Fdstechnolution%lab-001.git&cloudshell_git_branch=main&cloudshell_tutorial=README.md)
+
+[![Open in cloud shell](https://gstatic.com/cloudssh/images/open-btn.svg)](https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https://github.com/dstechnolution/lab-001.git&cloudshell_git_branch=main&cloudshell_tutorial=README.md)
 
 ## Tooling
 
