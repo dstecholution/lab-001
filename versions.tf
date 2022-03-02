@@ -22,6 +22,14 @@ terraform {
       version = "~> 1.1.1"
     }
   }
+  
+  cloud {
+    organization = var.tfcloud_org
+
+    workspaces {
+      name = var.tfcloud_workspace
+    }
+  }
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
