@@ -31,6 +31,7 @@ terraform {
 provider "google" {
   project = var.project
   region  = var.region
+  credentials = var.gcp-creds
 
   scopes = [
     # Default scopes
