@@ -23,13 +23,13 @@ terraform {
     }
   }
   
-  cloud {
-    organization = var.tfcloud_org
-
-    workspaces {
-      name = var.tfcloud_workspace
-    }
-  }
+##  cloud {
+##    organization = var.tfcloud_org
+##
+##    workspaces {
+##      name = var.tfcloud_workspace
+##    }
+##  }
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
