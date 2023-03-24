@@ -112,14 +112,20 @@ jobs:
               if: steps.plan.outcome == 'failure'
               run: exit 1
       
-            - name: Snyk scan
+            - name: Setup snyk
               uses: snyk/actions/setup@master
+
+            - name: IaC Test
               run: snyk iac test
               env:
                 SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-            - name: Report infrastructure costs
+            - name: setup infracost
               uses: infracost/actions/setup@v2
+
+            - name: Report on IaC Costs
+              env:
+                INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
               run: |
                 infracost breakdown --path=. \
                           --format=json \
@@ -134,8 +140,6 @@ jobs:
                      --compare-to=infracost-base.json \
                      --format=json \
                      --out-file=infracost.json
-              with:
-                api-key: ${{ secrets.INFRACOST_API_KEY }}
 
             - name: 'Sentinel Test'
               uses: hashicorp/sentinel-github-actions@master
@@ -146,8 +150,6 @@ jobs:
                   stl_actions_comment: true
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-
 
             - name: Terraform Apply
               if: github.ref == 'refs/heads/main' && github.event_name == 'push'
